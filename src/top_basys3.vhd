@@ -25,6 +25,15 @@ end top_basys3;
 architecture top_basys3_arch of top_basys3 is
 
     -- signal declarations
+    signal w_clk_fsm : std_logic; 
+    signal w_clk_tdm : std_logic; 
+    signal w_reset_fsm : std_logic;
+    signal w_reset_clk : std_logic;
+    signal w_floor1 : std_logic_vector(3 downto 0);
+    signal w_floor2 : std_logic_vector(3 downto 0);
+    signal w_data_sel : std_logic_vector(3 downto 0);
+    signal w_seg_data : std_logic_vector(3 downto 0);
+    constant k_HEX_F : std_logic_vector(3 downto 0) := x"F";
     
   
 	-- component declarations
@@ -70,7 +79,61 @@ architecture top_basys3_arch of top_basys3 is
 	
 begin
 	-- PORT MAPS ----------------------------------------
+    	w_reset_fsm <= btnU or btnR;
+    	w_reset_clk <= btnU or btnL;
+    	led(15) <= w_clk_fsm;
+    	led(14 downto 0) <= (others => '0');
     	
+    	clk_div_fsm : clock_divider
+    	   generic map ( k_DIV => 25000000)
+    	   port map (
+    	       i_clk => clk,
+    	       i_reset => w_reset_clk,
+    	       o_clk => w_clk_fsm
+    	       );
+    	clk_div_tdm : clock_divider
+    	   generic map (k_DIV => 125000)
+    	   port map (
+    	       i_clk => clk,
+    	       i_reset => w_reset_clk,
+    	       o_clk => w_clk_tdm
+    	       );
+    	       
+    	elevator_1 : elevator_controller_fsm
+    	   port map (
+    	       i_clk => w_clk_fsm,
+    	       i_reset => w_reset_fsm,
+    	       is_stopped => sw(0),
+    	       go_up_down => sw(1),
+    	       o_floor => w_floor1
+    	       );
+    	       
+    	elevator_2 : elevator_controller_fsm
+    	   port map (
+    	       i_clk => w_clk_fsm,
+    	       i_reset => w_reset_fsm,
+    	       is_stopped => sw(14),
+    	       go_up_down =>sw(15),
+    	       o_floor => w_floor2
+    	       );
+    	       
+    	 display_mux : TDM4
+    	   port map (
+    	       i_clk => w_clk_tdm,
+    	       i_reset => w_reset_clk,
+    	       i_D3 => k_HEX_F,
+    	       i_D2 => w_floor2,
+    	       i_D1 => k_HEX_F,
+    	       i_D0 => w_floor1,
+    	       o_data => w_seg_data,
+    	       o_sel => an 
+    	       );
+    	  
+         seg_decoder : sevenseg_decoder
+            port map (
+                i_Hex => w_seg_data,
+                o_seg_n => seg
+                );
 	
 	-- CONCURRENT STATEMENTS ----------------------------
 	
